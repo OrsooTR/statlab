@@ -6,8 +6,21 @@ Falls back to the default browser if no WebView runtime is available.
 from __future__ import annotations
 
 import multiprocessing
+import sys
 import threading
 import time
+from pathlib import Path
+
+# In a windowed (no-console) PyInstaller build sys.stdout/stderr are None and
+# uvicorn's logging handlers crash on startup. Route them to a log file.
+if getattr(sys, "frozen", False) and (sys.stdout is None or sys.stderr is None):
+    _log_dir = Path(sys.executable).resolve().parent / "data"
+    _log_dir.mkdir(parents=True, exist_ok=True)
+    _log = open(_log_dir / "statlab.log", "a", encoding="utf-8", buffering=1)
+    if sys.stdout is None:
+        sys.stdout = _log
+    if sys.stderr is None:
+        sys.stderr = _log
 
 import httpx
 import uvicorn
