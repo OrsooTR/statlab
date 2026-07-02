@@ -222,6 +222,36 @@ GET  /api/football/jobs/{id}
   substream per run via `numpy.random.SeedSequence.spawn`).
 - SQLite writes are serialised through a module-level lock.
 
+## 8.1 Live modules (v1.1)
+
+- **`app/crazytime/table.py`** — interactive table sessions (in-memory, TTL-bounded):
+  chip bets per spot, single spins over the physical 54-segment layout
+  (`wheel.layout`, validated against segment counts), Top Slot draw, and playable
+  bonus rounds. Cash Hunt and Crazy Time are two-phase (`await_choice` →
+  `/table/bonus-choice`); abandoned choices are auto-resolved on the next spin so a
+  session can never wedge. The `custom_layout` strategy bridges the table to the mass
+  Monte Carlo engine: the exact chip layout is simulated over millions of spins.
+- **`app/football/live/`** — Live Center backend:
+  - `provider.py` — pluggable data providers. `ApiFootballProvider` (real live
+    fixtures, events, lineups, statistics from api-sports.io; disk-tracked daily
+    request budget + TTL caches protect the free 100/day quota) and `DemoProvider`
+    (deterministic seeded simulation on a rolling 130-minute matchday cycle, clearly
+    labelled DEMO). Selected via `data/settings.json`.
+  - `inplay.py` — in-play model: pre-match Dixon-Coles rates (when the teams exist in
+    the historical store) blended with live shot-quality xG projected to 90', red-card
+    factors (0.72/1.10), remaining-time Poisson grid → live 1X2, expected final,
+    next-goal, live over/under, top scorelines; plus a decayed event-impact momentum
+    series for the pressure chart.
+  - `api.py` — `/api/live/settings|matches|match/{id}`.
+
+## 8.2 Packaging & distribution
+
+- `statlab.spec` — PyInstaller one-dir bundle (`dist/StatLab/StatLab.exe`), static
+  assets and JSON configs bundled via datas; `core/config.py` detects frozen mode and
+  keeps user data in `data/` next to the exe.
+- `.github/workflows/build.yml` — tests on every push; on `v*` tags builds the exe and
+  attaches `StatLab-windows.zip` to a GitHub Release.
+
 ## 9. Extensibility
 
 - **Wheel changes** → edit `wheel_config.json` (segments, paytable, bonus parameters,
