@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StatLab — Statistical Simulation &amp; Football Analytics</title>
+<link rel="stylesheet" href="/static/css/app.css">
+<script src="/static/vendor/chart.umd.js"></script>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar glass">
+    <div class="brand">
+      <div class="brand-mark">S</div>
+      <div>
+        <div class="brand-name">StatLab</div>
+        <div class="brand-sub">analytics workbench</div>
+      </div>
+    </div>
+
+    <div class="nav-section">Crazy Time Simulator</div>
+    <nav>
+      <a href="#/ct/table" data-route="ct/table"><span class="ni">🎰</span> Live Table</a>
+      <a href="#/ct/simulator" data-route="ct/simulator"><span class="ni">🎡</span> Simulator</a>
+      <a href="#/ct/wheel" data-route="ct/wheel"><span class="ni">📊</span> Wheel &amp; RTP</a>
+      <a href="#/ct/compare" data-route="ct/compare"><span class="ni">⚖️</span> Compare Strategies</a>
+      <a href="#/ct/history" data-route="ct/history"><span class="ni">🗂️</span> Results History</a>
+    </nav>
+
+    <div class="nav-section">Football AI Engine</div>
+    <nav>
+      <a href="#/fb/live" data-route="fb/live"><span class="ni">🔴</span> Live Center</a>
+      <a href="#/fb/dashboard" data-route="fb/dashboard"><span class="ni">🏟️</span> Dashboard</a>
+      <a href="#/fb/predict" data-route="fb/predict"><span class="ni">🎯</span> Match Predictor</a>
+      <a href="#/fb/day" data-route="fb/day"><span class="ni">📅</span> Daily Fixtures</a>
+      <a href="#/fb/slips" data-route="fb/slips"><span class="ni">🧾</span> Slip Builder</a>
+      <a href="#/fb/backtest" data-route="fb/backtest"><span class="ni">⏮️</span> Backtesting</a>
+      <a href="#/fb/data" data-route="fb/data"><span class="ni">💾</span> Data Manager</a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="pill pill-muted" id="health-pill">connecting…</div>
+      <div class="disclaimer">Statistical tooling. Simulations and probability
+        estimates only — never certainties, never financial advice.</div>
+    </div>
+  </aside>
+
+  <main id="view" class="view"></main>
+</div>
+
+<div id="toast-root"></div>
+
+<script src="/static/js/app.js"></script>
+<script src="/static/js/crazytime.js"></script>
+<script src="/static/js/cttable.js"></script>
+<script src="/static/js/football.js"></script>
+<script src="/static/js/live.js"></script>
+<script>App.start();</script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "_comment": "Registry of supported competitions. Adding an entry here makes the league appear across the whole application (data refresh, predictions, backtesting, dashboard) with no code change. Data source: football-data.co.uk full-time results + statistics + bookmaker odds. 'first_season' bounds historical downloads; the current season is derived from today's date automatically.",
+  "source": {
+    "results_url": "https://www.football-data.co.uk/mmz4281/{season}/{code}.csv",
+    "fixtures_url": "https://www.football-data.co.uk/fixtures.csv",
+    "cache_hours_current_season": 12
+  },
+  "competitions": [
+    {"code": "E0",  "name": "Premier League",        "country": "England",  "tier": 1, "first_season": "1516"},
+    {"code": "E1",  "name": "Championship",          "country": "England",  "tier": 2, "first_season": "1516"},
+    {"code": "SP1", "name": "La Liga",               "country": "Spain",    "tier": 1, "first_season": "1516"},
+    {"code": "I1",  "name": "Serie A",               "country": "Italy",    "tier": 1, "first_season": "1516"},
+    {"code": "D1",  "name": "Bundesliga",            "country": "Germany",  "tier": 1, "first_season": "1516"},
+    {"code": "F1",  "name": "Ligue 1",               "country": "France",   "tier": 1, "first_season": "1516"},
+    {"code": "N1",  "name": "Eredivisie",            "country": "Netherlands", "tier": 1, "first_season": "1516"},
+    {"code": "P1",  "name": "Primeira Liga",         "country": "Portugal", "tier": 1, "first_season": "1516"},
+    {"code": "B1",  "name": "Pro League",            "country": "Belgium",  "tier": 1, "first_season": "1516"},
+    {"code": "SC0", "name": "Scottish Premiership",  "country": "Scotland", "tier": 1, "first_season": "1516"},
+    {"code": "T1",  "name": "Süper Lig",             "country": "Turkey",   "tier": 1, "first_season": "1516"},
+    {"code": "G1",  "name": "Super League",          "country": "Greece",   "tier": 1, "first_season": "1516"}
+  ]
+}

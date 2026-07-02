@@ -1,0 +1,18 @@
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# runtime data (user-local: database, download cache, generated reports, live settings)
+data/
+
+# build artifacts
+build/
+dist/
+*.zip
+
+# tooling
+.pytest_cache/
+.claude/settings.local.json

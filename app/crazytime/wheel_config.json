@@ -1,0 +1,64 @@
+{
+  "_comment": "Config-driven definition of the Crazy Time wheel and bonus games. Edit this file to track future changes to the official game — no code change required. Segment counts and the number paytable match the Evolution Crazy Time wheel (54 segments). Evolution's internal Top Slot reel weighting and bonus boards are proprietary, so this model is CALIBRATED: the Top Slot target distribution is derived algorithmically from the published per-spot RTP targets below, and bonus multiplier distributions are tuned so the simulated RTP of every bet spot matches the published figures to within Monte Carlo error.",
+  "wheel": {
+    "_layout_comment": "Physical clockwise segment order of the wheel used by the interactive table. Counts are validated against the segment definitions at load time; edit freely if Evolution changes the layout — probabilities depend only on counts, the order is visual/physical.",
+    "layout": ["1","2","1","5","1","2","coin_flip","1","2","1","10","2","5","1","pachinko","2","1","5","1","2","coin_flip","1","10","1","2","cash_hunt","1","5","1","2","crazy_time","1","5","2","1","coin_flip","2","10","1","2","pachinko","1","5","1","cash_hunt","2","1","10","1","coin_flip","2","1","5","1"],
+    "segments": [
+      {"key": "1",          "count": 21, "type": "number", "pays": 1},
+      {"key": "2",          "count": 13, "type": "number", "pays": 2},
+      {"key": "5",          "count": 7,  "type": "number", "pays": 5},
+      {"key": "10",         "count": 4,  "type": "number", "pays": 10},
+      {"key": "coin_flip",  "count": 4,  "type": "bonus"},
+      {"key": "cash_hunt",  "count": 2,  "type": "bonus"},
+      {"key": "pachinko",   "count": 2,  "type": "bonus"},
+      {"key": "crazy_time", "count": 1,  "type": "bonus"}
+    ]
+  },
+  "rtp_targets": {
+    "_comment": "Published Evolution RTP per bet spot. The Top Slot target-spot distribution is solved from the number targets; bonus distributions below are tuned to the bonus targets.",
+    "1": 0.9608, "2": 0.9595, "5": 0.9607, "10": 0.9590,
+    "coin_flip": 0.9570, "cash_hunt": 0.9527, "pachinko": 0.9433, "crazy_time": 0.9441
+  },
+  "top_slot": {
+    "_comment": "Before every spin the Top Slot draws one bet spot and one multiplier. The multiplier applies (multiplicatively) only when the wheel result matches the drawn spot. The target-spot probabilities are computed in code from rtp_targets.",
+    "multipliers": [2, 3, 4, 5, 7, 10, 15, 20, 25, 50],
+    "weights":     [62, 21, 7, 4, 2.5, 1.5, 0.8, 0.5, 0.4, 0.3]
+  },
+  "coin_flip": {
+    "_comment": "Two multipliers are generated, a fair coin selects one. Top Slot multiplies both sides before the flip.",
+    "multipliers": [2, 3, 4, 5, 7, 10, 15, 20, 25, 35, 50, 75, 100],
+    "weights":     [21.6, 17, 13, 11, 9, 8, 7, 5, 3.5, 2.5, 1.8, 0.7, 0.5],
+    "max_multiplier": 5000
+  },
+  "cash_hunt": {
+    "_comment": "108-symbol shooting gallery. The board is filled from this distribution, symbols are shuffled, and the pick is uniformly random over the board.",
+    "board_size": 108,
+    "multipliers": [5, 7, 10, 15, 20, 25, 50, 75, 100, 250, 500],
+    "weights":     [28.7, 20, 15, 11, 8, 7, 6, 3, 2.5, 1, 0.5],
+    "max_multiplier": 25000
+  },
+  "pachinko": {
+    "_comment": "16-slot wall. The puck enters at a uniformly random gate and performs a bounded random walk over peg rows. DOUBLE slots double every wall value (capped) and the puck drops again.",
+    "wall_size": 16,
+    "double_slots": 2,
+    "peg_rows": 12,
+    "multipliers": [5, 7, 10, 15, 20, 25, 50, 75, 100],
+    "weights":     [25.9, 18, 15, 12, 10, 8, 7, 3.5, 2.5],
+    "max_multiplier": 10000,
+    "max_doubles": 12
+  },
+  "crazy_time_bonus": {
+    "_comment": "64-segment bonus wheel behind the red door. Player picks one of three flappers (blue/green/yellow) — outcome-equivalent to a uniform draw over segments. DOUBLE/TRIPLE segments rescale all values (capped) and trigger a respin.",
+    "segments": 64,
+    "double_segments": 5,
+    "triple_segments": 3,
+    "multipliers": [25, 50, 75, 100, 150, 200],
+    "weights":     [68.4, 22.6, 5, 2.5, 1, 0.5],
+    "max_multiplier": 20000,
+    "max_rescales": 10
+  },
+  "table": {
+    "min_bet": 0.1,
+    "max_bet": 2500
+  }
+}
