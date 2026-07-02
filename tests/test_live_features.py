@@ -104,6 +104,69 @@ def test_momentum_series_shapes():
     assert max(m["home"]) > 0
 
 
+def test_bonus_pays_stake_back():
+    """Winning a bonus must return multiplier × stake PLUS the stake itself:
+    5 on a bonus that pays 2x → payout 15 (10 win + 5 stake back)."""
+    s = table.create_session(1_000_000)
+    sid = s["session_id"]
+    for _ in range(800):
+        r = table.spin(sid, {"coin_flip": 5})
+        if r["segment"] == "coin_flip":
+            won = r["detail"]["won_multiplier"]
+            assert r["winnings"] == pytest.approx(5 * (1 + won), abs=0.01)
+            return
+    pytest.fail("coin_flip never hit in 800 spins (p < 1e-25)")
+
+
+def test_number_pays_stake_back():
+    s = table.create_session(1_000_000)
+    sid = s["session_id"]
+    for _ in range(400):
+        r = table.spin(sid, {"10": 5})
+        if r["phase"] == "await_choice":
+            table.bonus_choice(sid, 0 if r["game"] == "cash_hunt" else "blue")
+            continue
+        if r["segment"] == "10":
+            pays = r["detail"]["pays"]
+            assert r["winnings"] == pytest.approx(5 * (1 + pays), abs=0.01)
+            return
+    pytest.fail("'10' never hit in 400 spins (p < 1e-13)")
+
+
+# -------------------------------------------------------------- multi-source
+def test_aggregator_merges_same_fixture():
+    from app.football.live.aggregator import merge_matches, same_fixture
+    espn = {"id": "espn:ger.1:1", "kickoff": "2026-07-02T18:30", "home": "Bayern Munich",
+            "away": "Borussia Dortmund", "score_home": 1, "score_away": 0,
+            "minute": 55, "live": True, "finished": False, "sources": ["espn"]}
+    oldb = {"id": "oldb:bl1:9", "kickoff": "2026-07-02T18:30", "home": "FC Bayern München",
+            "away": "Borussia Dortmund", "score_home": 1, "score_away": 0,
+            "minute": None, "live": True, "finished": False, "sources": ["openligadb"]}
+    other = {"id": "espn:eng.1:2", "kickoff": "2026-07-02T20:00", "home": "Arsenal",
+             "away": "Chelsea", "score_home": None, "score_away": None,
+             "minute": None, "live": False, "finished": False, "sources": ["espn"]}
+    assert same_fixture(espn, oldb)
+    assert not same_fixture(espn, other)
+    merged = merge_matches([[espn, other], [oldb]])
+    assert len(merged) == 2
+    bayern = next(m for m in merged if "Bayern" in m["home"])
+    assert set(bayern["sources"]) == {"espn", "openligadb"}
+    assert bayern["minute"] == 55  # richer ESPN record won and kept its minute
+
+
+def test_sources_registry_is_honest():
+    import json
+    from pathlib import Path
+    cfg = json.loads((Path("app/football/live/sources.json")).read_text(encoding="utf-8"))
+    ids = {s["id"]: s for s in cfg["sources"]}
+    assert ids["espn"]["enabled"] is True and ids["espn"]["auth"] == "none"
+    assert ids["openligadb"]["enabled"] is True
+    # scraping-hostile sites must stay disabled with a documented reason
+    for blocked in ("diretta_flashscore", "sofascore", "fotmob"):
+        assert ids[blocked]["enabled"] is False
+        assert ids[blocked]["_why_disabled"]
+
+
 # ------------------------------------------------------------------ demo feed
 def test_demo_provider_consistency():
     p = provider.DemoProvider()

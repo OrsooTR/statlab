@@ -137,13 +137,17 @@ def spin(sid: str, bets: dict[str, float]) -> dict:
         side = "red" if rng.random() < 0.5 else "blue"
         won = red if side == "red" else blue
         detail = {"red": red, "blue": blue, "result": side, "won_multiplier": won}
+        # winning bets always get the stake back on top of multiplier × stake
         return _settle(s, base, phase="bonus_settled",
-                       winnings=bet_on_bonus * won, detail=detail)
+                       winnings=bet_on_bonus * (1.0 + won) if bet_on_bonus > 0 else 0.0,
+                       detail=detail)
 
     if segment == "pachinko":
         detail = _play_pachinko(rng, cfg, ts_factor)
+        won = detail["won_multiplier"]
         return _settle(s, base, phase="bonus_settled",
-                       winnings=bet_on_bonus * detail["won_multiplier"], detail=detail)
+                       winnings=bet_on_bonus * (1.0 + won) if bet_on_bonus > 0 else 0.0,
+                       detail=detail)
 
     if segment == "cash_hunt":
         vals, p = _dist(cfg, "cash_hunt")
@@ -193,8 +197,9 @@ def bonus_choice(sid: str, choice: Any) -> dict:
             raise ValueError("invalid board position")
         won = float(board[idx])
         detail = {"board": board, "pick_index": idx, "won_multiplier": won}
+        bet = pending["bet"]
         return _settle(s, pending["base"], phase="bonus_settled",
-                       winnings=pending["bet"] * won, detail=detail)
+                       winnings=bet * (1.0 + won) if bet > 0 else 0.0, detail=detail)
 
     # crazy_time flapper
     color = str(choice).lower()
@@ -222,8 +227,9 @@ def bonus_choice(sid: str, choice: Any) -> dict:
     else:
         won = cap
     detail = {"flapper": color, "spins": spins, "won_multiplier": won}
+    bet = pending["bet"]
     return _settle(s, pending["base"], phase="bonus_settled",
-                   winnings=pending["bet"] * won, detail=detail)
+                   winnings=bet * (1.0 + won) if bet > 0 else 0.0, detail=detail)
 
 
 def _play_pachinko(rng: np.random.Generator, cfg: dict, ts_factor: float) -> dict:

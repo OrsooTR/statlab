@@ -10,7 +10,7 @@ router = APIRouter(prefix="/api/live", tags=["live"])
 
 
 class SettingsRequest(BaseModel):
-    provider: str = Field(pattern="^(demo|api_football)$")
+    provider: str = Field(pattern="^(auto|demo|api_football)$")
     api_key: str = ""
 
 

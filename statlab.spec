@@ -7,6 +7,7 @@ datas = [
     ("app/static", "app/static"),
     ("app/crazytime/wheel_config.json", "app/crazytime"),
     ("app/football/competitions.json", "app/football"),
+    ("app/football/live/sources.json", "app/football/live"),
 ]
 binaries = []
 hiddenimports = (

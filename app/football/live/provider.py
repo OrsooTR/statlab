@@ -49,7 +49,7 @@ def load_settings() -> dict:
                 return json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
             except Exception:
                 pass
-        return {"provider": "demo", "api_key": "", "requests_today": 0,
+        return {"provider": "auto", "api_key": "", "requests_today": 0,
                 "requests_date": ""}
 
 
@@ -61,9 +61,13 @@ def save_settings(s: dict) -> None:
 
 def get_provider():
     s = load_settings()
-    if s.get("provider") == "api_football" and s.get("api_key"):
+    choice = s.get("provider", "auto")
+    if choice == "api_football" and s.get("api_key"):
         return ApiFootballProvider(s["api_key"])
-    return DemoProvider()
+    if choice == "demo":
+        return DemoProvider()
+    from .aggregator import AutoAggregator  # local import: avoids a cycle
+    return AutoAggregator()
 
 
 # --------------------------------------------------------------- cache helper

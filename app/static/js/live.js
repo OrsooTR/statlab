@@ -24,14 +24,15 @@
         lineups, substitutions, event timeline and in-play probability updates.</div>
       <div class="card mb">
         <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:end">
-          <label class="field" style="margin:0;min-width:210px"><span>Data provider</span>
+          <label class="field" style="margin:0;min-width:250px"><span>Data provider</span>
             <select id="lv-provider">
+              <option value="auto" ${settings.provider === "auto" ? "selected" : ""}>Multi-source auto (no key: ESPN + OpenLigaDB)</option>
               <option value="demo" ${settings.provider === "demo" ? "selected" : ""}>Demo simulation (built-in)</option>
-              <option value="api_football" ${settings.provider === "api_football" ? "selected" : ""}>API-Football (real live data)</option>
+              <option value="api_football" ${settings.provider === "api_football" ? "selected" : ""}>API-Football only (key required)</option>
             </select></label>
-          <label class="field" style="margin:0;flex:1;min-width:220px"><span>API-Football key
-            (free at api-football.com${settings.has_key ? " — key saved ✓" : ""})</span>
-            <input id="lv-key" type="password" placeholder="${settings.has_key ? "•••••••• (saved)" : "paste your API key"}"></label>
+          <label class="field" style="margin:0;flex:1;min-width:220px"><span>API-Football key — optional, enriches auto mode
+            ${settings.has_key ? "(key saved ✓)" : ""}</span>
+            <input id="lv-key" type="password" placeholder="${settings.has_key ? "•••••••• (saved)" : "optional API key"}"></label>
           <button class="btn small ghost" id="lv-save">Save</button>
           <label class="field" style="margin:0"><span>Auto-refresh</span>
             <select id="lv-auto">
@@ -76,6 +77,13 @@
   function providerLabel(st) {
     if (!st) return "";
     if (st.demo) return "DEMO mode — simulated matches so every feature is testable. " + (st.note || "");
+    if (st.provider === "auto") {
+      const names = (st.sources || []).map((s) =>
+        s.provider === "espn" ? `ESPN (${s.leagues} competitions)` :
+        s.provider === "openligadb" ? `OpenLigaDB (${s.leagues})` :
+        s.provider === "api_football" ? `API-Football (${s.requests_today}/${s.daily_budget} today)` : s.provider);
+      return `Cross-referenced sources: ${names.join(" + ")}. Duplicate fixtures are merged by team-name matching; each match shows its sources. Full registry in app/football/live/sources.json.`;
+    }
     return `API-Football connected — ${st.requests_today}/${st.daily_budget} requests used today (free-tier quota is protected).`;
   }
 
@@ -90,7 +98,8 @@
             <div>
               <b>${esc(m.home)}</b> <span class="value" style="font-size:18px">
                 ${m.score_home !== null ? m.score_home + " – " + m.score_away : "vs"}</span> <b>${esc(m.away)}</b>
-              <div class="faint">${esc(m.league)}</div>
+              <div class="faint">${esc(m.league)}${(m.sources || []).length
+                ? ` · <span title="data sources">${m.sources.map(esc).join(" ✚ ")}</span>` : ""}</div>
             </div>
             <div style="text-align:right">
               ${live ? `<span class="pill pill-bad" style="animation:pulse 1.5s infinite">● ${m.status === "HT" ? "HT" : (m.minute ?? "") + "′"}</span>`

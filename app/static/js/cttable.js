@@ -281,11 +281,14 @@
   }
 
   function settleUI(r) {
-    const msg = r.net >= 0 ? `won ${fmt(r.winnings, 2)} (net +${fmt(r.net, 2)})`
-                           : `won ${fmt(r.winnings, 2)} (net ${fmt(r.net, 2)})`;
+    const stakeBack = r.winnings > 0 ? (r.bets[r.segment] || 0) : 0;
+    const pureWin = r.winnings - stakeBack;
+    const msg = r.winnings > 0
+      ? `payout ${fmt(r.winnings, 2)} = ${fmt(pureWin, 2)} win + ${fmt(stakeBack, 2)} stake back (net ${r.net >= 0 ? "+" : ""}${fmt(r.net, 2)})`
+      : `no win (net ${fmt(r.net, 2)})`;
     document.getElementById("tbl-lastwin").textContent =
       `Last spin: ${LABELS[r.segment]}${r.top_slot.matched ? ` with TOP SLOT ${r.top_slot.multiplier}x` : ""} — ${msg}`;
-    toast(`${LABELS[r.segment]} — ${msg}`, r.net >= 0 ? "ok" : "err", 3500);
+    toast(`${LABELS[r.segment]} — ${msg}`, r.net >= 0 ? "ok" : "err", 4500);
   }
 
   // ----------------------------------------------------------- bonus overlays

@@ -1,0 +1,88 @@
+{
+  "_comment": "Registry of live/match data sources. The 'auto' provider queries every enabled source, merges duplicate fixtures by team-name similarity + date, and cross-annotates each match with the sources that reported it. Add a new source by writing an adapter class and registering it here — no other code changes.",
+  "sources": [
+    {
+      "id": "espn",
+      "name": "ESPN public JSON feeds",
+      "adapter": "espn",
+      "enabled": true,
+      "auth": "none",
+      "provides": ["live_scores", "fixtures", "statistics", "lineups", "events", "odds_sometimes"],
+      "leagues": [
+        {"code": "ita.1", "name": "Serie A"},
+        {"code": "eng.1", "name": "Premier League"},
+        {"code": "esp.1", "name": "La Liga"},
+        {"code": "ger.1", "name": "Bundesliga"},
+        {"code": "fra.1", "name": "Ligue 1"},
+        {"code": "ned.1", "name": "Eredivisie"},
+        {"code": "por.1", "name": "Primeira Liga"},
+        {"code": "eng.2", "name": "Championship"},
+        {"code": "ita.2", "name": "Serie B"},
+        {"code": "sco.1", "name": "Scottish Premiership"},
+        {"code": "tur.1", "name": "Super Lig"},
+        {"code": "bel.1", "name": "Belgian Pro League"},
+        {"code": "usa.1", "name": "MLS"},
+        {"code": "bra.1", "name": "Brasileirao"},
+        {"code": "arg.1", "name": "Liga Profesional"},
+        {"code": "mex.1", "name": "Liga MX"},
+        {"code": "uefa.champions", "name": "Champions League"},
+        {"code": "uefa.europa", "name": "Europa League"},
+        {"code": "uefa.europa.conf", "name": "Conference League"},
+        {"code": "fifa.world", "name": "World Cup"},
+        {"code": "uefa.euro", "name": "Euro"},
+        {"code": "conmebol.libertadores", "name": "Copa Libertadores"}
+      ]
+    },
+    {
+      "id": "openligadb",
+      "name": "OpenLigaDB (community, Germany)",
+      "adapter": "openligadb",
+      "enabled": true,
+      "auth": "none",
+      "provides": ["live_scores", "fixtures", "goal_events"],
+      "leagues": [
+        {"code": "bl1", "name": "Bundesliga"},
+        {"code": "bl2", "name": "2. Bundesliga"},
+        {"code": "dfb", "name": "DFB-Pokal"}
+      ]
+    },
+    {
+      "id": "football_data_couk",
+      "name": "football-data.co.uk",
+      "adapter": null,
+      "enabled": true,
+      "auth": "none",
+      "provides": ["historical_results", "statistics", "bookmaker_odds"],
+      "_note": "Already integrated as the historical database and fixtures/odds feed for the prediction engine (app/football/data_sources.py)."
+    },
+    {
+      "id": "api_football",
+      "name": "API-Football (api-sports.io)",
+      "adapter": "api_football",
+      "enabled": "when_key_present",
+      "auth": "free API key (100 req/day)",
+      "provides": ["live_scores", "fixtures", "statistics", "lineups", "events", "odds"]
+    },
+    {
+      "id": "diretta_flashscore",
+      "name": "diretta.it / Flashscore",
+      "adapter": null,
+      "enabled": false,
+      "_why_disabled": "Terms of use explicitly prohibit automated scraping; the site serves data through obfuscated, anti-bot-protected internal feeds. Not included deliberately — an adapter would be unreliable and non-compliant."
+    },
+    {
+      "id": "sofascore",
+      "name": "SofaScore",
+      "adapter": null,
+      "enabled": false,
+      "_why_disabled": "ToS prohibit automated access; API endpoints are fingerprint-protected and rotate. Same reasoning as Flashscore."
+    },
+    {
+      "id": "fotmob",
+      "name": "FotMob",
+      "adapter": null,
+      "enabled": false,
+      "_why_disabled": "Formerly open JSON endpoints now require signed tokens; ToS prohibit scraping."
+    }
+  ]
+}

@@ -38,12 +38,21 @@ python run_desktop.py
 python run_server.py
 ```
 
-## Live football data
+## Live football data — no API key needed
 
-The Live Center ships with a built-in **demo simulation** so every feature works out
-of the box. For **real live data** (live scores, events, lineups, stats), create a free
-account at [api-football.com](https://www.api-football.com) (100 requests/day free),
-then paste your API key in *Live Center → settings*. The app tracks the daily quota and
+The Live Center's default **auto** provider cross-references multiple open sources
+with no registration: **ESPN public JSON feeds** (22 competitions: live scores,
+statistics, lineups, events) and **OpenLigaDB** (German leagues), merging duplicate
+fixtures by team-name matching and labelling every match with its sources. The full
+source registry lives in `app/football/live/sources.json` — add an adapter and an
+entry to plug in more.
+
+Honesty note: diretta.it / Flashscore / SofaScore / FotMob are deliberately **not**
+scraped — their terms prohibit automated access and they run anti-bot protection;
+they are listed as disabled in the registry with the reason documented.
+
+Optionally, a free [api-football.com](https://www.api-football.com) key (100
+requests/day) enriches the auto feed further; the app tracks the daily quota and
 caches responses so the free tier is never burned by auto-refresh.
 
 The app runs entirely on your machine at `http://127.0.0.1:8765`
