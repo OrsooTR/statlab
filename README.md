@@ -19,12 +19,21 @@ premium dark-glassmorphism interface:
    lineups, substitutions, event timelines, momentum charts and in-play Poisson
    probability updates.
 
-## Download (Windows executable)
+## Download (Windows)
 
-Grab **StatLab-windows.zip** from the
-[Releases page](../../releases), extract it anywhere, and run `StatLab.exe`.
-No Python required. Your data (match database, reports, settings) is stored in a
-`data/` folder next to the executable.
+From the [Releases page](../../releases):
+
+- **StatLab-Setup.exe** — recommended. A proper Windows installer (Start-menu &
+  desktop shortcuts, uninstaller). Once installed, the app updates **itself** from
+  inside — open *Updates* and click *Download & install*; no manual re-download.
+- **StatLab-windows.zip** — portable build; extract anywhere and run `StatLab.exe`.
+
+No Python required. Your data (match database, reports, live settings) is stored in a
+`data/` folder next to the app.
+
+### Staying up to date
+StatLab checks GitHub for new releases on startup and flags the **Updates** page.
+On the installed build, one click downloads the new installer and applies it in place.
 
 ## Run from source
 
@@ -46,6 +55,13 @@ statistics, lineups, events) and **OpenLigaDB** (German leagues), merging duplic
 fixtures by team-name matching and labelling every match with its sources. The full
 source registry lives in `app/football/live/sources.json` — add an adapter and an
 entry to plug in more.
+
+Matches are grouped by **category** (international national-team games, continental
+club cups, domestic leagues) then by country and competition, with a category filter —
+so a World Cup night no longer mixes with club fixtures. Any match in a supported
+league shows a **🎯 Predict** button that runs the full ensemble prediction on the fly
+(feed team names are matched to the historical database and the league is downloaded on
+demand).
 
 Honesty note: diretta.it / Flashscore / SofaScore / FotMob are deliberately **not**
 scraped — their terms prohibit automated access and they run anti-bot protection;
