@@ -127,6 +127,58 @@ def predict(req: PredictRequest) -> dict:
     return {"job_id": job.id}
 
 
+MIN_MATCHES_FOR_MODEL = 200
+
+
+class PredictLiveRequest(BaseModel):
+    fd_code: str                       # football-data league code (from the feed)
+    home: str                          # raw feed team names
+    away: str
+    date: Optional[str] = None
+    odds: Optional[dict[str, float]] = None
+
+
+def _ensure_league_data(progress, code: str) -> None:
+    existing = store.get_matches(code)
+    if len(existing) < MIN_MATCHES_FOR_MODEL:
+        progress(0.1, f"downloading {code} history…")
+        store.refresh_league(lambda f, m="": progress(0.1 + 0.4 * f, m), code)
+
+
+def _predict_live(progress, req: PredictLiveRequest) -> dict:
+    from . import resolve
+    comp = ds.competition(req.fd_code)
+    if comp is None:
+        raise ValueError(f"no historical model for this competition "
+                         f"(feed code {req.fd_code}). Predictions cover supported "
+                         f"domestic leagues; national-team and cup ties are not modelled.")
+    _ensure_league_data(progress, req.fd_code)
+    home = resolve.resolve_team(req.home, req.fd_code)
+    away = resolve.resolve_team(req.away, req.fd_code)
+    if not home or not away:
+        missing = req.home if not home else req.away
+        raise ValueError(f"could not match '{missing}' to a team in {comp['name']} "
+                         f"history — the model needs a team with past results in this league.")
+    progress(0.6, "fitting models & simulating")
+    engine = get_engine(req.fd_code)
+    pred = engine.predict(home, away, req.date, req.odds, n_sims=10_000)
+    pred["resolved"] = {"home": home, "away": away,
+                        "feed_home": req.home, "feed_away": req.away}
+    with write_conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO fb_predictions (created_at, league, home, away, match_date, "
+            "prediction_json) VALUES (?,?,?,?,?,?)",
+            (utcnow(), req.fd_code, home, away, pred["date"], dumps(pred)))
+        pred["id"] = int(cur.lastrowid)
+    return pred
+
+
+@router.post("/predict-live")
+def predict_live(req: PredictLiveRequest) -> dict:
+    job = jobs.manager.submit_thread("fb-predict-live", _predict_live, req)
+    return {"job_id": job.id}
+
+
 def _predict_day(progress, req: PredictDayRequest) -> dict:
     day = req.date or date.today().isoformat()
     fx = ds.fetch_fixtures()

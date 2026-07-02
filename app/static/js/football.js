@@ -14,7 +14,8 @@
 
   const leagueOpts = (list, withData = false) => list
     .filter((c) => !withData || c.matches > 0)
-    .map((c) => `<option value="${c.code}">${esc(c.name)} (${esc(c.country)})</option>`).join("");
+    .map((c) => `<option value="${c.code}">${esc(c.name)} (${esc(c.country)})${
+      c.matches > 0 ? "" : " — download on select"}</option>`).join("");
 
   // ================================================================ dashboard
   register("fb/dashboard", async (view) => {
@@ -96,7 +97,8 @@
         <div class="card">
           <div class="section-title">⚙️ Fixture</div>
           <label class="field"><span>League</span>
-            <select id="pr-league">${leagueOpts(c.competitions, true)}</select></label>
+            <select id="pr-league">${leagueOpts(c.competitions)}</select></label>
+          <div class="faint" id="pr-teams-status"></div>
           <label class="field"><span>Home team</span><select id="pr-home"></select></label>
           <label class="field"><span>Away team</span><select id="pr-away"></select></label>
           <label class="field"><span>Match date (optional)</span>
@@ -117,15 +119,36 @@
           data yet, load it in the Data Manager first.</div></div>
       </div>`;
 
-    const loadTeams = async () => {
-      const lg = document.getElementById("pr-league").value;
-      const teams = await get(`/api/football/teams?league=${lg}`);
+    const setTeams = (teams) => {
       const opts = teams.map((t) => `<option>${esc(t)}</option>`).join("");
       document.getElementById("pr-home").innerHTML = opts;
       document.getElementById("pr-away").innerHTML = opts;
       if (teams.length > 1) document.getElementById("pr-away").selectedIndex = 1;
     };
-    if (c.competitions.some((x) => x.matches > 0)) await loadTeams();
+    const loadTeams = async () => {
+      const lg = document.getElementById("pr-league").value;
+      const status = document.getElementById("pr-teams-status");
+      const runBtn = document.getElementById("pr-run");
+      status.innerHTML = "";
+      let teams = await get(`/api/football/teams?league=${lg}`);
+      if (!teams.length) {
+        // no historical data for this league yet — download it on demand
+        status.innerHTML = `<span class="spinner"></span> downloading league history…`;
+        runBtn.disabled = true;
+        try {
+          const { job_id } = await post(`/api/football/refresh?league=${lg}`, null);
+          await pollJob("/api/football", job_id, (j) => {
+            status.innerHTML = `<span class="spinner"></span> ${esc(j.message || "downloading…")}`;
+          });
+          teams = await get(`/api/football/teams?league=${lg}`);
+        } finally { runBtn.disabled = false; }
+        status.innerHTML = teams.length
+          ? `<span class="pill pill-good">✓ ${teams.length} teams loaded</span>`
+          : `<span class="pill pill-bad">no data available for this league</span>`;
+      }
+      setTeams(teams);
+    };
+    await loadTeams();
     document.getElementById("pr-league").addEventListener("change", loadTeams);
 
     document.getElementById("pr-run").addEventListener("click", async () => {
@@ -157,6 +180,8 @@
       }
     });
   });
+
+  App.renderPrediction = (box, p) => renderPrediction(box, p);
 
   function renderPrediction(box, p) {
     const pr = p.probabilities;

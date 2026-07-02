@@ -134,7 +134,12 @@ class ESPNSource:
         minute = self._minute(status)
         return {
             "id": f"espn:{lg['code']}:{event_id}",
-            "league": f"{lg.get('name', lg['code'])} (ESPN)",
+            "league": lg.get("name", lg["code"]),
+            "league_code": lg["code"],
+            "category": lg.get("category", "domestic"),
+            "country": lg.get("country", ""),
+            "flag": lg.get("flag", ""),
+            "fd_code": lg.get("fd_code"),
             "kickoff": comp.get("date", ""),
             "status": stype.get("shortDetail") or stype.get("description", ""),
             "minute": minute if state == "in" else (90 if state == "post" else None),

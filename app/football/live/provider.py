@@ -163,9 +163,17 @@ class ApiFootballProvider:
     def _norm_fixture(r: dict) -> dict:
         fx, lg, tm, goals = r["fixture"], r["league"], r["teams"], r["goals"]
         st = fx.get("status", {})
+        country = lg.get("country", "") or ""
+        is_cup = country.lower() in ("world", "europe", "") or "cup" in str(lg.get("name", "")).lower()
         return {
             "id": str(fx["id"]),
-            "league": f'{lg.get("name","")} ({lg.get("country","")})',
+            "league": lg.get("name", ""),
+            "league_code": str(lg.get("id", "")),
+            "category": "international" if country.lower() == "world"
+                        else ("continental" if is_cup else "domestic"),
+            "country": country,
+            "flag": "",
+            "fd_code": None,
             "kickoff": fx.get("date", ""),
             "status": st.get("short", ""),
             "minute": st.get("elapsed"),
@@ -228,9 +236,16 @@ DEMO_TEAMS = [
     ("Milan", "Inter"), ("Real Madrid", "Barcelona"), ("Arsenal", "Liverpool"),
     ("Bayern", "Dortmund"), ("PSG", "Marseille"), ("Ajax", "PSV"),
 ]
-DEMO_LEAGUES = ["Serie A (Italy) — DEMO", "La Liga (Spain) — DEMO",
-                "Premier League (England) — DEMO", "Bundesliga (Germany) — DEMO",
-                "Ligue 1 (France) — DEMO", "Eredivisie (Netherlands) — DEMO"]
+DEMO_LEAGUES = ["Serie A", "La Liga", "Premier League", "Bundesliga",
+                "Ligue 1", "Eredivisie"]
+DEMO_META = [
+    {"country": "Italy", "flag": "🇮🇹", "fd_code": "I1"},
+    {"country": "Spain", "flag": "🇪🇸", "fd_code": "SP1"},
+    {"country": "England", "flag": "🏴", "fd_code": "E0"},
+    {"country": "Germany", "flag": "🇩🇪", "fd_code": "D1"},
+    {"country": "France", "flag": "🇫🇷", "fd_code": "F1"},
+    {"country": "Netherlands", "flag": "🇳🇱", "fd_code": "N1"},
+]
 POS_ORDER = ["G", "D", "D", "D", "D", "M", "M", "M", "F", "F", "F"]
 FIRST = ["Luca", "Marco", "Andrea", "Paolo", "Diego", "Karim", "Leo", "Kylian",
          "Erling", "Jude", "Pedri", "Bruno", "Nico", "Sandro", "Rafa", "Theo",
@@ -335,13 +350,18 @@ class DemoProvider:
 
     def _norm(self, st: dict) -> dict:
         sh, sa = self._score(st)
-        return {"id": st["id"], "league": st["league"],
+        meta = DEMO_META[st["index"]]
+        return {"id": st["id"], "league": st["league"] + " (DEMO)",
+                "league_code": f"demo{st['index']}",
+                "category": "domestic", "country": meta["country"],
+                "flag": meta["flag"], "fd_code": meta["fd_code"],
                 "kickoff": datetime.fromtimestamp(st["kick"], tz=timezone.utc).isoformat(),
                 "status": st["status"], "minute": st["minute"],
                 "live": st["status"] in ("1H", "2H", "HT"),
                 "finished": st["status"] == "FT",
                 "home": st["home"], "away": st["away"],
-                "score_home": sh, "score_away": sa}
+                "score_home": sh, "score_away": sa,
+                "sources": ["demo"]}
 
     def live_matches(self) -> list[dict]:
         return [self._norm(s) for s in self._matches_state()

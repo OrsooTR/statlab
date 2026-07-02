@@ -154,6 +154,43 @@ def test_aggregator_merges_same_fixture():
     assert bayern["minute"] == 55  # richer ESPN record won and kept its minute
 
 
+def test_source_leagues_have_grouping_metadata():
+    import json
+    from pathlib import Path
+    cfg = json.loads(Path("app/football/live/sources.json").read_text(encoding="utf-8"))
+    espn = next(s for s in cfg["sources"] if s["id"] == "espn")
+    cats = {"domestic", "continental", "international"}
+    for lg in espn["leagues"]:
+        assert lg["category"] in cats, lg["code"]
+        assert "country" in lg and "flag" in lg
+        assert "fd_code" in lg  # may be null, but key must exist
+    # every non-null fd_code must exist in competitions.json
+    comps = json.loads(Path("app/football/competitions.json").read_text(encoding="utf-8"))
+    codes = {c["code"] for c in comps["competitions"]}
+    for lg in espn["leagues"]:
+        if lg["fd_code"]:
+            assert lg["fd_code"] in codes, f"{lg['code']} -> {lg['fd_code']} missing in competitions.json"
+
+
+def test_updater_version_parsing():
+    from app.core.updater import _parse_version
+    assert _parse_version("v1.3.0") == (1, 3, 0)
+    assert _parse_version("1.10.2") > _parse_version("1.9.9")
+    assert _parse_version("v2.0.0") > _parse_version("v1.99.99")
+    assert _parse_version("") == (0,)
+
+
+def test_team_resolver_normalisation():
+    from app.football.resolve import _fold, _tokens, ALIASES
+    assert _fold("Bayern München") == "bayern munchen"
+    assert "bayern" in _tokens("FC Bayern München")   # FC stopword dropped
+    assert ALIASES["manchester city"] == "Man City"
+    assert ALIASES[_fold("Internazionale")] == "Inter"
+    # unknown league -> no teams in store -> graceful None
+    from app.football import resolve
+    assert resolve.resolve_team("Whoever FC", "ZZ_NONEXISTENT") is None
+
+
 def test_sources_registry_is_honest():
     import json
     from pathlib import Path
@@ -173,7 +210,8 @@ def test_demo_provider_consistency():
     today = p.today_matches()
     assert len(today) == 6
     for m in today:
-        assert m["home"] and m["away"] and m["league"].endswith("DEMO")
+        assert m["home"] and m["away"] and "DEMO" in m["league"]
+        assert m["category"] == "domestic" and m["fd_code"]
     live = p.live_matches()
     for m in live:
         d = p.match_detail(m["id"])

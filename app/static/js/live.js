@@ -45,7 +45,11 @@
         <div class="faint mt" id="lv-status">${providerLabel(settings.status)}</div>
       </div>
       <div id="lv-lists"></div>
-      <div id="lv-detail"></div>`;
+      <div id="lv-detail"></div>
+      <div id="lv-predict-overlay" style="display:none;position:fixed;inset:0;z-index:60;
+        background:rgba(5,6,15,.86);backdrop-filter:blur(8px);overflow-y:auto">
+        <div style="max-width:1000px;margin:30px auto;padding:0 20px" id="lv-predict-content"></div>
+      </div>`;
 
     document.getElementById("lv-save").addEventListener("click", async () => {
       try {
@@ -87,42 +91,158 @@
     return `API-Football connected — ${st.requests_today}/${st.daily_budget} requests used today (free-tier quota is protected).`;
   }
 
+  const CATEGORY_META = {
+    international: { label: "International — national teams", icon: "🌍", order: 0 },
+    continental:  { label: "Continental club cups",         icon: "🏆", order: 1 },
+    domestic:     { label: "Domestic leagues",              icon: "🏟️", order: 2 },
+  };
+  let lastData = null;
+  let catFilter = "all";
+
+  function card(m) {
+    const live = m.live, fin = m.finished;
+    const predictable = !!m.fd_code;
+    return `
+      <div class="card lv-card" data-match="${esc(m.id)}" style="cursor:pointer;padding:13px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+          <div style="min-width:0">
+            <b>${esc(m.home)}</b> <span class="value" style="font-size:17px">
+              ${m.score_home !== null && m.score_home !== undefined ? m.score_home + " – " + m.score_away : "vs"}</span> <b>${esc(m.away)}</b>
+            <div class="faint">${(m.sources || []).map(esc).join(" ✚ ")}</div>
+          </div>
+          <div style="text-align:right;display:flex;flex-direction:column;gap:5px;align-items:flex-end">
+            ${live ? `<span class="pill pill-bad" style="animation:pulse 1.5s infinite">● ${m.status === "HT" ? "HT" : (m.minute ?? "") + "′"}</span>`
+                   : fin ? `<span class="pill pill-muted">FT</span>`
+                   : `<span class="pill pill-accent">${esc((m.kickoff || "").slice(11, 16) || "today")}</span>`}
+            ${predictable && !fin
+              ? `<button class="btn small" data-predict="${esc(m.id)}" style="padding:4px 10px;font-size:11px">🎯 Predict</button>`
+              : ""}
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function groupByCompetition(matches) {
+    // returns [{category, country, flag, league, matches:[]}] ordered sensibly
+    const groups = {};
+    for (const m of matches) {
+      const key = `${m.category}|${m.country}|${m.league}`;
+      (groups[key] = groups[key] || { category: m.category || "domestic",
+        country: m.country || "", flag: m.flag || "", league: m.league, matches: [] }).matches.push(m);
+    }
+    return Object.values(groups).sort((a, b) => {
+      const ca = (CATEGORY_META[a.category] || { order: 9 }).order;
+      const cb = (CATEGORY_META[b.category] || { order: 9 }).order;
+      if (ca !== cb) return ca - cb;
+      if (a.country !== b.country) return a.country.localeCompare(b.country);
+      return a.league.localeCompare(b.league);
+    });
+  }
+
+  function renderStatusSection(title, icon, matches) {
+    if (!matches.length) return "";
+    const filtered = catFilter === "all" ? matches : matches.filter((m) => m.category === catFilter);
+    if (!filtered.length) return "";
+    const groups = groupByCompetition(filtered);
+    let html = `<div class="section-title" style="margin-top:18px">${icon} ${title} (${filtered.length})</div>`;
+    let lastCat = null;
+    for (const g of groups) {
+      if (g.category !== lastCat) {
+        const cm = CATEGORY_META[g.category] || { label: g.category, icon: "•" };
+        html += `<div class="faint" style="margin:14px 0 6px;text-transform:uppercase;letter-spacing:1.5px;font-size:10.5px">${cm.icon} ${esc(cm.label)}</div>`;
+        lastCat = g.category;
+      }
+      html += `<div style="display:flex;align-items:center;gap:8px;margin:10px 0 6px">
+          <span style="font-size:15px">${g.flag}</span>
+          <b style="font-size:13px">${esc(g.country)}${g.country ? " · " : ""}${esc(g.league)}</b>
+          <span class="faint">${g.matches.length}</span></div>
+        <div class="grid grid-2">${g.matches.map(card).join("")}</div>`;
+    }
+    return html;
+  }
+
+  function renderLists() {
+    const box = document.getElementById("lv-lists");
+    if (!box || !lastData) return;
+    const d = lastData;
+    const cats = [...new Set([...d.live, ...d.upcoming, ...d.finished].map((m) => m.category))]
+      .filter(Boolean);
+    const filterBar = `
+      <div class="chip-row mb" style="margin-top:6px">
+        <div class="chip ${catFilter === "all" ? "on" : ""}" data-cat="all">All</div>
+        ${["international", "continental", "domestic"].filter((c) => cats.includes(c)).map((c) =>
+          `<div class="chip ${catFilter === c ? "on" : ""}" data-cat="${c}">${CATEGORY_META[c].icon} ${CATEGORY_META[c].label}</div>`).join("")}
+      </div>`;
+    const body =
+      renderStatusSection("Live now", "🔴", d.live) +
+      renderStatusSection("Upcoming", "🕒", d.upcoming) +
+      renderStatusSection("Finished today", "✅", d.finished);
+    box.innerHTML = `<style>@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}</style>` + filterBar +
+      (body || `<div class="card empty">No matches in this category right now.</div>`);
+    box.querySelectorAll("[data-cat]").forEach((c) => c.addEventListener("click", () => {
+      catFilter = c.dataset.cat; renderLists();
+    }));
+    box.querySelectorAll("[data-predict]").forEach((b) => b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      predictFromLive(b.dataset.predict);
+    }));
+    box.querySelectorAll("[data-match]").forEach((c) =>
+      c.addEventListener("click", () => loadDetail(c.dataset.match, false)));
+  }
+
   async function loadLists() {
     const box = document.getElementById("lv-lists");
     if (!box) return;
     try {
-      const d = await get("/api/live/matches");
-      const card = (m, live) => `
-        <div class="card" data-match="${esc(m.id)}" style="cursor:pointer;padding:14px">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
-            <div>
-              <b>${esc(m.home)}</b> <span class="value" style="font-size:18px">
-                ${m.score_home !== null ? m.score_home + " – " + m.score_away : "vs"}</span> <b>${esc(m.away)}</b>
-              <div class="faint">${esc(m.league)}${(m.sources || []).length
-                ? ` · <span title="data sources">${m.sources.map(esc).join(" ✚ ")}</span>` : ""}</div>
-            </div>
-            <div style="text-align:right">
-              ${live ? `<span class="pill pill-bad" style="animation:pulse 1.5s infinite">● ${m.status === "HT" ? "HT" : (m.minute ?? "") + "′"}</span>`
-                     : m.finished ? `<span class="pill pill-muted">FT</span>`
-                     : `<span class="pill pill-accent">${esc((m.kickoff || "").slice(11, 16) || "today")}</span>`}
-            </div>
-          </div>
-        </div>`;
-      box.innerHTML = `
-        <style>@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}</style>
-        ${d.live.length ? `<div class="section-title">🔴 Live now (${d.live.length})</div>
-          <div class="grid grid-2 mb">${d.live.map((m) => card(m, true)).join("")}</div>` : ""}
-        ${d.upcoming.length ? `<div class="section-title">🕒 Upcoming today (${d.upcoming.length})</div>
-          <div class="grid grid-2 mb">${d.upcoming.map((m) => card(m, false)).join("")}</div>` : ""}
-        ${d.finished.length ? `<div class="section-title">✅ Finished today (${d.finished.length})</div>
-          <div class="grid grid-2 mb">${d.finished.map((m) => card(m, false)).join("")}</div>` : ""}
-        ${!d.live.length && !d.upcoming.length && !d.finished.length
-          ? `<div class="card empty">No matches found today from the provider.</div>` : ""}`;
-      box.querySelectorAll("[data-match]").forEach((c) =>
-        c.addEventListener("click", () => loadDetail(c.dataset.match, false)));
+      lastData = await get("/api/live/matches");
+      renderLists();
     } catch (err) {
       box.innerHTML = `<div class="card"><div class="section-title">Provider error</div>
         <div class="muted">${esc(err.message)}</div></div>`;
+    }
+  }
+
+  async function predictFromLive(id) {
+    const m = [...(lastData.live || []), ...(lastData.upcoming || []), ...(lastData.finished || [])]
+      .find((x) => x.id === id);
+    if (!m) return;
+    if (!m.fd_code) {
+      toast("No historical model for this competition (national teams / cups are not modelled).", "err", 6000);
+      return;
+    }
+    const ov = document.getElementById("lv-predict-overlay");
+    const content = document.getElementById("lv-predict-content");
+    ov.style.display = "";
+    content.innerHTML = `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="section-title" style="margin:0">🎯 Predicting ${esc(m.home)} vs ${esc(m.away)}</div>
+        <button class="btn small ghost" id="lv-predict-close">✕ Close</button></div>
+      <div class="muted mt"><span class="spinner"></span> fitting models on ${esc(m.country)} ${esc(m.league)} history…
+        <span class="faint">(first time downloads the league; ~10-30s)</span></div>
+      <div class="progress-track mt"><div class="progress-bar" id="lv-predict-progress"></div></div></div>`;
+    document.getElementById("lv-predict-close").addEventListener("click", () => { ov.style.display = "none"; });
+    try {
+      const { job_id } = await post("/api/football/predict-live",
+        { fd_code: m.fd_code, home: m.home, away: m.away, date: (m.kickoff || "").slice(0, 10) || null });
+      const p = await App.pollJob("/api/football", job_id, (j) => {
+        const bar = document.getElementById("lv-predict-progress");
+        if (bar) bar.style.width = (j.progress * 100) + "%";
+      });
+      content.innerHTML = `<div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+          <button class="btn small ghost" id="lv-predict-close2">✕ Close</button></div>
+        ${p.resolved && (p.resolved.home !== p.resolved.feed_home || p.resolved.away !== p.resolved.feed_away)
+          ? `<div class="faint mb">Matched to historical teams: ${esc(p.resolved.feed_home)} → <b>${esc(p.resolved.home)}</b>,
+             ${esc(p.resolved.feed_away)} → <b>${esc(p.resolved.away)}</b></div>` : ""}
+        <div id="lv-predict-box"></div>`;
+      document.getElementById("lv-predict-close2").addEventListener("click", () => { ov.style.display = "none"; });
+      App.renderPrediction(document.getElementById("lv-predict-box"), p);
+    } catch (err) {
+      content.innerHTML = `<div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="section-title" style="margin:0">Prediction unavailable</div>
+          <button class="btn small ghost" id="lv-predict-close3">✕ Close</button></div>
+        <div class="muted mt">${esc(err.message)}</div></div>`;
+      document.getElementById("lv-predict-close3").addEventListener("click", () => { ov.style.display = "none"; });
     }
   }
 

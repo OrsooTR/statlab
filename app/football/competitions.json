@@ -10,6 +10,7 @@
     {"code": "E1",  "name": "Championship",          "country": "England",  "tier": 2, "first_season": "1516"},
     {"code": "SP1", "name": "La Liga",               "country": "Spain",    "tier": 1, "first_season": "1516"},
     {"code": "I1",  "name": "Serie A",               "country": "Italy",    "tier": 1, "first_season": "1516"},
+    {"code": "I2",  "name": "Serie B",               "country": "Italy",    "tier": 2, "first_season": "1516"},
     {"code": "D1",  "name": "Bundesliga",            "country": "Germany",  "tier": 1, "first_season": "1516"},
     {"code": "F1",  "name": "Ligue 1",               "country": "France",   "tier": 1, "first_season": "1516"},
     {"code": "N1",  "name": "Eredivisie",            "country": "Netherlands", "tier": 1, "first_season": "1516"},

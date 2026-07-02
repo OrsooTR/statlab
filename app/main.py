@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from .core import jobs
 from .core.config import APP_NAME, APP_VERSION, STATIC_DIR, ensure_dirs
 from .core.database import init_db
+from .core.system_api import router as system_router
 from .crazytime.api import router as crazytime_router
 from .football.api import router as football_router
 from .football.live.api import router as live_router
@@ -33,6 +34,7 @@ def create_app() -> FastAPI:
     app.include_router(crazytime_router)
     app.include_router(football_router)
     app.include_router(live_router)
+    app.include_router(system_router)
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 

@@ -134,6 +134,7 @@ const App = (() => {
       const pill = document.getElementById("health-pill");
       pill.textContent = "● engine online";
       pill.className = "pill pill-good";
+      if (App.checkUpdatesOnStart) App.checkUpdatesOnStart();
     } catch (e) {
       const pill = document.getElementById("health-pill");
       pill.textContent = "● backend offline";

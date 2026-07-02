@@ -111,7 +111,12 @@ class OpenLigaDBSource:
         live = started and not finished
         return {
             "id": f"oldb:{lg['code']}:{m.get('matchID')}",
-            "league": f"{lg.get('name', lg['code'])} (OpenLigaDB)",
+            "league": lg.get("name", lg["code"]),
+            "league_code": lg["code"],
+            "category": lg.get("category", "domestic"),
+            "country": lg.get("country", "Germany"),
+            "flag": lg.get("flag", "🇩🇪"),
+            "fd_code": lg.get("fd_code"),
             "kickoff": (m.get("matchDateTimeUTC") or m.get("matchDateTime") or "")[:19],
             "status": "FT" if finished else ("LIVE" if live else "NS"),
             "minute": (max((g.get("matchMinute") or 0) for g in goals) if goals else 1) if live else (90 if finished else None),

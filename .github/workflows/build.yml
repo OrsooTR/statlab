@@ -33,9 +33,21 @@ jobs:
           python-version: "3.10"
       - run: pip install -r requirements.txt pyinstaller
       - run: pyinstaller statlab.spec --noconfirm
-      - run: Compress-Archive -Path dist/StatLab -DestinationPath StatLab-windows.zip
+      - name: Zip portable build
+        run: Compress-Archive -Path dist/StatLab -DestinationPath StatLab-windows.zip
         shell: pwsh
+      - name: Derive version from tag
+        id: ver
+        shell: pwsh
+        run: echo "version=$($env:GITHUB_REF_NAME -replace '^v','')" >> $env:GITHUB_OUTPUT
+      - name: Build installer (Inno Setup)
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DMyAppVersion=${{ steps.ver.outputs.version }} installer.iss
       - uses: softprops/action-gh-release@v2
         with:
-          files: StatLab-windows.zip
+          files: |
+            Output/StatLab-Setup.exe
+            StatLab-windows.zip
           generate_release_notes: true
