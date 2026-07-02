@@ -63,6 +63,17 @@ league shows a **🎯 Predict** button that runs the full ensemble prediction on
 (feed team names are matched to the historical database and the league is downloaded on
 demand).
 
+### National teams & World Cup, with player markets
+National-team matches (World Cup, Euro, any nation vs nation) get their own model built
+from the open [international results dataset](https://github.com/martj42/international_results)
+(~49k matches since 1872): a neutral-venue-aware, tournament-weighted Poisson + Elo +
+Dixon-Coles engine. When the starting XIs are published, the **🎯 Predict + scorers**
+button also produces **player markets** — anytime / first / 2+ goalscorer and penalty —
+computed from real international goal data (each player's share of his team's goals scales
+the model-expected goals into a personal Poisson rate), plus per-player analysis. Card
+markets are shown as an honest positional estimate (no per-player international card log is
+available without a paid feed). Club player markets require the optional API-Football key.
+
 Honesty note: diretta.it / Flashscore / SofaScore / FotMob are deliberately **not**
 scraped — their terms prohibit automated access and they run anti-bot protection;
 they are listed as disabled in the registry with the reason documented.

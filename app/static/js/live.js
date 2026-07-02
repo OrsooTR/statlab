@@ -101,7 +101,9 @@
 
   function card(m) {
     const live = m.live, fin = m.finished;
-    const predictable = !!m.fd_code;
+    const isIntl = m.category === "international";
+    const predictable = !!m.fd_code || isIntl;
+    const predictLabel = isIntl ? "🎯 Predict + scorers" : "🎯 Predict";
     return `
       <div class="card lv-card" data-match="${esc(m.id)}" style="cursor:pointer;padding:13px">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
@@ -114,8 +116,8 @@
             ${live ? `<span class="pill pill-bad" style="animation:pulse 1.5s infinite">● ${m.status === "HT" ? "HT" : (m.minute ?? "") + "′"}</span>`
                    : fin ? `<span class="pill pill-muted">FT</span>`
                    : `<span class="pill pill-accent">${esc((m.kickoff || "").slice(11, 16) || "today")}</span>`}
-            ${predictable && !fin
-              ? `<button class="btn small" data-predict="${esc(m.id)}" style="padding:4px 10px;font-size:11px">🎯 Predict</button>`
+            ${predictable && (!fin || isIntl)
+              ? `<button class="btn small" data-predict="${esc(m.id)}" style="padding:4px 10px;font-size:11px">${predictLabel}</button>`
               : ""}
           </div>
         </div>
@@ -202,12 +204,31 @@
     }
   }
 
-  async function predictFromLive(id) {
-    const m = [...(lastData.live || []), ...(lastData.upcoming || []), ...(lastData.finished || [])]
+  function findMatch(id) {
+    return [...(lastData.live || []), ...(lastData.upcoming || []), ...(lastData.finished || [])]
       .find((x) => x.id === id);
+  }
+
+  function openPredictOverlay(titleHtml) {
+    const ov = document.getElementById("lv-predict-overlay");
+    const content = document.getElementById("lv-predict-content");
+    ov.style.display = "";
+    content.innerHTML = `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="section-title" style="margin:0">${titleHtml}</div>
+        <button class="btn small ghost" id="lv-predict-close">✕ Close</button></div>
+      <div class="muted mt"><span class="spinner"></span> working…</div>
+      <div class="progress-track mt"><div class="progress-bar" id="lv-predict-progress"></div></div></div>`;
+    document.getElementById("lv-predict-close").addEventListener("click", () => { ov.style.display = "none"; });
+    return { ov, content };
+  }
+
+  async function predictFromLive(id) {
+    const m = findMatch(id);
     if (!m) return;
+    if (m.category === "international") return predictInternational(m);
     if (!m.fd_code) {
-      toast("No historical model for this competition (national teams / cups are not modelled).", "err", 6000);
+      toast("No historical model for this competition.", "err", 6000);
       return;
     }
     const ov = document.getElementById("lv-predict-overlay");
@@ -243,6 +264,108 @@
           <button class="btn small ghost" id="lv-predict-close3">✕ Close</button></div>
         <div class="muted mt">${esc(err.message)}</div></div>`;
       document.getElementById("lv-predict-close3").addEventListener("click", () => { ov.style.display = "none"; });
+    }
+  }
+
+  async function predictInternational(m) {
+    const { ov, content } = openPredictOverlay(`🌍 ${esc(m.home)} vs ${esc(m.away)} — full analysis`);
+    try {
+      const { job_id } = await post("/api/live/international-prediction",
+        { fixture_id: m.id, neutral: true });
+      const r = await App.pollJob("/api/live", job_id, (j) => {
+        const bar = document.getElementById("lv-predict-progress");
+        if (bar) bar.style.width = (j.progress * 100) + "%";
+      });
+      content.innerHTML = `<div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+          <button class="btn small ghost" id="lv-intl-close">✕ Close</button></div>
+        <div id="lv-intl-box"></div>`;
+      document.getElementById("lv-intl-close").addEventListener("click", () => { ov.style.display = "none"; });
+      renderInternational(document.getElementById("lv-intl-box"), r);
+    } catch (err) {
+      content.innerHTML = `<div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="section-title" style="margin:0">Prediction unavailable</div>
+          <button class="btn small ghost" id="lv-intl-close2">✕ Close</button></div>
+        <div class="muted mt">${esc(err.message)}</div></div>`;
+      document.getElementById("lv-intl-close2").addEventListener("click", () => { ov.style.display = "none"; });
+    }
+  }
+
+  function renderInternational(box, r) {
+    const p = r.prediction, pr = p.probabilities;
+    const ou = p.markets.over_under;
+    const riskCls = { low: "pill-good", medium: "pill-warn", high: "pill-bad" }[p.risk];
+    const scorerTable = (sideKey) => {
+      const s = r.player_markets ? r.player_markets[sideKey] : null;
+      if (!s) return "";
+      const rows = s.players.filter((pl) => pl.markets.anytime_scorer > 0.01).slice(0, 8).map((pl) => `
+        <tr><td>${esc(pl.name)} <span class="faint">${esc(pl.position)}</span></td>
+          <td>${(pl.markets.anytime_scorer * 100).toFixed(0)}%</td>
+          <td>${(pl.markets.first_scorer * 100).toFixed(0)}%</td>
+          <td>${(pl.markets.two_plus_scorer * 100).toFixed(0)}%</td>
+          <td>${pl.markets.penalty_goal > 0 ? (pl.markets.penalty_goal * 100).toFixed(0) + "%" : "–"}</td>
+          <td class="faint">${pl.analysis.goals}g</td></tr>`).join("");
+      return `<div class="card"><div class="section-title">⚽ ${esc(s.team)} — scorer markets</div>
+        ${rows ? `<div class="table-wrap"><table>
+          <thead><tr><th>Player</th><th>Anytime</th><th>First</th><th>2+</th><th>Pen</th><th>Intl</th></tr></thead>
+          <tbody>${rows}</tbody></table></div>`
+          : `<div class="muted">No scorer data matched for this lineup.</div>`}</div>`;
+    };
+    const bookingTable = (sideKey) => {
+      const s = r.player_markets ? r.player_markets[sideKey] : null;
+      if (!s) return "";
+      const rows = s.players.slice().sort((a, b) => b.markets.to_be_booked_est - a.markets.to_be_booked_est)
+        .slice(0, 5).map((pl) => `<tr><td>${esc(pl.name)} <span class="faint">${esc(pl.position)}</span></td>
+          <td>${(pl.markets.to_be_booked_est * 100).toFixed(0)}%</td></tr>`).join("");
+      return `<div class="card"><div class="section-title">🟨 ${esc(s.team)} — to be booked <span class="faint">(estimate)</span></div>
+        <div class="table-wrap"><table><thead><tr><th>Player</th><th>Est.</th></tr></thead>
+        <tbody>${rows}</tbody></table></div></div>`;
+    };
+
+    box.innerHTML = `
+      <div class="card mb">
+        <div style="text-align:center">
+          <div class="faint">${esc(p.resolved.feed_home)} vs ${esc(p.resolved.feed_away)}
+            ${p.neutral ? "· neutral venue" : ""} · national teams model</div>
+          <div class="page-title" style="margin:6px 0">${esc(p.home)}
+            <span style="color:var(--accent2)">${esc(p.predicted_scoreline)}</span> ${esc(p.away)}</div>
+        </div>
+        <div class="mt">${probBar(pr.home, pr.draw, pr.away)}</div>
+        <div class="faint" style="display:flex;justify-content:space-between;margin-top:4px">
+          <span>${esc(p.home)} ${pct(pr.home)}</span><span>draw ${pct(pr.draw)}</span>
+          <span>${esc(p.away)} ${pct(pr.away)}</span></div>
+        <div class="mt" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+          <span class="pill pill-accent">confidence ${p.confidence_pct}%</span>
+          <span class="pill ${riskCls}">risk ${p.risk}</span>
+          <span class="pill pill-muted">xG ${p.expected_goals.home} – ${p.expected_goals.away}</span>
+          <span class="pill pill-muted">Elo ${p.ratings.home_elo} – ${p.ratings.away_elo}</span>
+          <span class="pill pill-muted">BTTS ${pct(p.markets.btts)}</span>
+          <span class="pill pill-muted">Over 2.5 ${pct(ou["2.5"].over)}</span>
+        </div>
+        <div class="mt" style="text-align:center">
+          ${p.alternatives.map((a) => `<span class="pill pill-muted" style="margin:2px">${a.score} ${pct(a.probability)}</span>`).join("")}
+        </div>
+      </div>
+      ${r.has_lineups ? `
+        <div class="grid grid-2 mb">${scorerTable("home")}${scorerTable("away")}</div>
+        <div class="card mb"><div class="section-title">🎫 Suggested scorer picks (ranked by probability)</div>
+          <div id="lv-intl-picks"></div></div>
+        <div class="grid grid-2 mb">${bookingTable("home")}${bookingTable("away")}</div>
+        <div class="faint">${esc(r.player_markets.notes.scoring_markets)}<br>${esc(r.player_markets.notes.card_markets)}</div>
+      ` : `<div class="card"><div class="muted">Lineups not published yet — scorer markets appear once the
+        starting XIs are announced (usually ~1 hour before kickoff). The match prediction above is available now.</div></div>`}`;
+
+    if (r.has_lineups) {
+      const all = [...r.player_markets.home.players.map((p) => ({ ...p, team: r.player_markets.home.team })),
+        ...r.player_markets.away.players.map((p) => ({ ...p, team: r.player_markets.away.team }))]
+        .filter((p) => p.markets.anytime_scorer > 0.03)
+        .sort((a, b) => b.markets.anytime_scorer - a.markets.anytime_scorer).slice(0, 6);
+      document.getElementById("lv-intl-picks").innerHTML = all.map((p) => `
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+          <span><b>${esc(p.name)}</b> <span class="faint">${esc(p.team)} · ${p.analysis.goals} intl goals</span></span>
+          <span><span class="pill pill-good">anytime ${(p.markets.anytime_scorer * 100).toFixed(0)}%</span>
+            <span class="pill pill-muted">first ${(p.markets.first_scorer * 100).toFixed(0)}%</span></span>
+        </div>`).join("");
     }
   }
 
