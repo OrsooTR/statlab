@@ -61,7 +61,10 @@ def resolve_team(name: str, league: str) -> Optional[str]:
         alias = ALIASES[folded]
     else:
         alias = None
-    teams = store.get_teams(league, last_n_seasons=3)
+    try:
+        teams = store.get_teams(league, last_n_seasons=3)
+    except Exception:
+        return None
     if not teams:
         return None
     if alias and alias in teams:
