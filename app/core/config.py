@@ -27,7 +27,7 @@ HOST = os.environ.get("STATLAB_HOST", "127.0.0.1")
 PORT = int(os.environ.get("STATLAB_PORT", "8765"))
 
 APP_NAME = "StatLab"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"
 
 # Maximum number of worker processes used by simulation fan-out.
 MAX_WORKERS = max(1, (os.cpu_count() or 4) - 1)

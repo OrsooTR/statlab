@@ -1,4 +1,4 @@
-# PyInstaller build spec for the StatLab desktop executable (one-dir bundle).
+﻿# PyInstaller build spec for the StatLab desktop executable (one-dir bundle).
 # Build:  pyinstaller statlab.spec --noconfirm
 # Output: dist/StatLab/StatLab.exe  (zip the StatLab folder for distribution)
 from PyInstaller.utils.hooks import collect_all, collect_submodules
